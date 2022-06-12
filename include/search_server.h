@@ -1,4 +1,5 @@
 #pragma once
+
 #include <cmath>
 #include <math.h>
 #include <set>
@@ -7,6 +8,7 @@
 
 #include "document.h"
 #include "string_processing.h"
+#include "log_duration.h"
 
 const int MAX_RESULT_DOCUMENT_COUNT = 5;
 
@@ -30,11 +32,11 @@ class SearchServer {
 
     std::set<std::string> stop_words_;
 
-    std::map<std::string, std::map<int, double>> word_to_document_freqs_;
+    std::map<int, std::map<std::string, double>> doc_to_word_freqs_;
 
     std::map<int, DocumentData> documents_;
-
-    std::vector<int> document_ids_;
+    
+    std::set<int> document_id_;
 
 public:
     // Defines an invalid document id
@@ -52,12 +54,14 @@ public:
         return documents_.size();
     }
 
-    int GetDocumentId(int index)const {
+    //O(1)
+    inline std::set<int>::const_iterator begin() const noexcept {
+        return document_id_.begin();
+    }
 
-        if (GetDocumentCount() < index || index < 0) {
-            throw std::out_of_range("non-existend ID");
-        }
-        return document_ids_.at(index);
+    //O(1)
+    inline std::set<int>::const_iterator end() const noexcept {
+        return document_id_.end();
     }
 
     template <typename DocumentPredicate>
@@ -68,6 +72,12 @@ public:
     std::vector<Document> FindTopDocuments(const std::string&) const;
 
     std::tuple<std::vector<std::string>, DocumentStatus> MatchDocument(const std::string&, int) const;
+
+    //O(log N)
+    const std::map<std::string, double>& GetWordFrequencies(const int) const noexcept;
+
+    //O(W log N)
+    void RemoveDocument(int document_id);
 
 private:
 
@@ -106,6 +116,7 @@ SearchServer::SearchServer(const StringContainer& stop_words) {
 
 template <typename DocumentPredicate>
 std::vector<Document> SearchServer::FindTopDocuments(const std::string& raw_query, DocumentPredicate document_predicate) const {
+
     std::vector<Document> result;
     Query query;
     if (!ParseQuery(raw_query, query)) {
@@ -133,25 +144,36 @@ std::vector<Document> SearchServer::FindTopDocuments(const std::string& raw_quer
 template <typename DocumentPredicate>
 std::vector<Document> SearchServer::FindAllDocuments(const Query& query, DocumentPredicate document_predicate) const {
     std::map<int, double> document_to_relevance;
+
     for (const std::string& word : query.plus_words) {
-        if (word_to_document_freqs_.count(word) == 0) {
-            continue;
-        }
         const double inverse_document_freq = ComputeWordInverseDocumentFreq(word);
-        for (const auto [document_id, term_freq] : word_to_document_freqs_.at(word)) {
+
+        for (const auto [document_id, word_freq] : doc_to_word_freqs_) {
+
             const auto& document_data = documents_.at(document_id);
-            if (document_predicate(document_id, document_data.status, document_data.rating)) {
-                document_to_relevance[document_id] += term_freq * inverse_document_freq;
+
+            for (const auto [w, fr] : word_freq) {
+                if (w == word) {
+                    if (document_predicate(document_id, document_data.status, document_data.rating)) {
+                        document_to_relevance[document_id] += fr * inverse_document_freq;
+                    }
+                    continue;
+                }
             }
         }
     }
 
+
     for (const std::string& word : query.minus_words) {
-        if (word_to_document_freqs_.count(word) == 0) {
-            continue;
-        }
-        for (const auto [document_id, _] : word_to_document_freqs_.at(word)) {
-            document_to_relevance.erase(document_id);
+        for (const auto& [id, doc] : doc_to_word_freqs_) {
+            if (document_to_relevance.count(id)) {
+                for (const auto& [w, fr] : doc) {
+                    if (w == word) {
+                        document_to_relevance.erase(id);
+                        continue;
+                    }
+                }
+            }
         }
     }
 
@@ -166,7 +188,7 @@ template <typename StringContainer>
 void SearchServer::CheckValidity(const StringContainer& strings) {
     for (const std::string& str : strings) {
         if (!IsValidWord(str)) {
-            throw std::invalid_argument("invalid stop-words in constructor");
+            throw std::invalid_argument("invalid stop-words in constructor"s);
         }
     }
 }

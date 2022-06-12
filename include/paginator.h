@@ -21,7 +21,7 @@ std::ostream& operator<<(std::ostream& os, const IteratorRange<It>& ir) {
 
 template <typename It>
 class Paginator {
-    std::vector<IteratorRange<It>> _range;
+    std::vector<IteratorRange<It>> range_;
     It begin_;
     It end_;
 
@@ -33,16 +33,16 @@ public:
             if (distance > static_cast<int>(size)) {
                 distance = size;
             }
-            _range.push_back({ begin_, begin_ + distance });
+            range_.push_back({ begin_, begin_ + distance });
             std::advance(begin_, distance);
         }
     };
 
     auto begin()const noexcept{
-        return _range.begin();
+        return range_.begin();
     }
     auto end()const noexcept{
-        return _range.end();
+        return range_.end();
     }
 };
 

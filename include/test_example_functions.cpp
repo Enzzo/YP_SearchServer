@@ -48,46 +48,46 @@ bool is_equal(const double l, const double r) {
 
 //creating an instance of a search server that covers all the tests
 SearchServer GetTestServer() {
-
+    //стоп-слова не добавляются
     SearchServer server("1word1 2word2 3word3"s);
 
-    server.AddDocument(0, "1word1 1word2 1word3 1word4", DocumentStatus::ACTUAL, { 1, 2, 3 });
-    server.AddDocument(1, "2word1 2word2 2word3 2word4", DocumentStatus::BANNED, { 4, 5, 6, 7, 8 });
-    server.AddDocument(2, "3word1 3word2 3word3 3word4 3word3 3word4", DocumentStatus::IRRELEVANT, { 1, 3, 4, 5, 6, 7, 8 });
-    server.AddDocument(3, "4word1 4word2 4word3 4word4", DocumentStatus::REMOVED, { 4, 5, 6, 7, 8, 20, 9 });
+    server.AddDocument(0, "1word1 1word2 1word3 1word4"s, DocumentStatus::ACTUAL, { 1, 2, 3 });
+    server.AddDocument(1, "2word1 2word2 2word3 2word4"s, DocumentStatus::BANNED, { 4, 5, 6, 7, 8 });
+    server.AddDocument(2, "3word1 3word2 3word3 3word4 3word3 3word4"s, DocumentStatus::IRRELEVANT, { 1, 3, 4, 5, 6, 7, 8 });
+    server.AddDocument(3, "4word1 4word2 4word3 4word4"sv, DocumentStatus::REMOVED, { 4, 5, 6, 7, 8, 20, 9 });
     server.AddDocument(4, "5word1 5word2 5word3 5word4 5word3 5word4", DocumentStatus::ACTUAL, { 5, 1, 3, 4, 5, 6, 7, 8 });
-    server.AddDocument(5, "6word1 6word2 6word1 6word2", DocumentStatus::ACTUAL, { 9, 4, 5, 6, 7, 8, 20, 9 });
+    server.AddDocument(5, "6word1 6word2 6word1 6word2"sv, DocumentStatus::ACTUAL, { 9, 4, 5, 6, 7, 8, 20, 9 });
 
     return server;
 }
 
 SearchServer GetTestServerWithDuplicates() {
 
-    SearchServer server("and with"s);
+    SearchServer server("and with"sv);
 
-    server.AddDocument(1, "funny pet and nasty rat"s, DocumentStatus::ACTUAL, { 7, 2, 7 });
-    server.AddDocument(2, "funny pet with curly hair"s, DocumentStatus::ACTUAL, { 1, 2 });
+    server.AddDocument(1, "funny pet and nasty rat"sv, DocumentStatus::ACTUAL, { 7, 2, 7 });
+    server.AddDocument(2, "funny pet with curly hair"sv, DocumentStatus::ACTUAL, { 1, 2 });
 
     // duplicate of document 2
-    server.AddDocument(3, "funny pet with curly hair"s, DocumentStatus::ACTUAL, { 1, 2 });
+    server.AddDocument(3, "funny pet with curly hair"sv, DocumentStatus::ACTUAL, { 1, 2 });
 
     // duplicate of document 2. The difference between stop words.
-    server.AddDocument(4, "funny pet and curly hair"s, DocumentStatus::ACTUAL, { 1, 2 });
+    server.AddDocument(4, "funny pet and curly hair"sv, DocumentStatus::ACTUAL, { 1, 2 });
 
     //the set of words is the same. Duplicate of document 1
-    server.AddDocument(5, "funny funny pet and nasty nasty rat"s, DocumentStatus::ACTUAL, { 1, 2 });
+    server.AddDocument(5, "funny funny pet and nasty nasty rat"sv, DocumentStatus::ACTUAL, { 1, 2 });
 
     // new words. not a duplicate
-    server.AddDocument(6, "funny pet and not very nasty rat"s, DocumentStatus::ACTUAL, { 1, 2 });
+    server.AddDocument(6, "funny pet and not very nasty rat"sv, DocumentStatus::ACTUAL, { 1, 2 });
 
     // duplicate of document 6. Different order, but the set is the same
-    server.AddDocument(7, "very nasty rat and not very funny pet"s, DocumentStatus::ACTUAL, { 1, 2 });
+    server.AddDocument(7, "very nasty rat and not very funny pet"sv, DocumentStatus::ACTUAL, { 1, 2 });
 
     // not a duplicate
-    server.AddDocument(8, "pet with rat and rat and rat"s, DocumentStatus::ACTUAL, { 1, 2 });
+    server.AddDocument(8, "pet with rat and rat and rat"sv, DocumentStatus::ACTUAL, { 1, 2 });
 
     // not a duplicate
-    server.AddDocument(9, "nasty rat with curly hair"s, DocumentStatus::ACTUAL, { 1, 2 });
+    server.AddDocument(9, "nasty rat with curly hair"sv, DocumentStatus::ACTUAL, { 1, 2 });
 
     return server;
 }
@@ -95,7 +95,7 @@ SearchServer GetTestServerWithDuplicates() {
 void SearchServer_AddDocument_CheckSize_SizeChange() {
 
     //empty server
-    SearchServer server(""s);
+    SearchServer server(""sv);
 
     //search for a non-existent word
     std::vector<Document> fd = server.FindTopDocuments("1word1");
@@ -104,7 +104,7 @@ void SearchServer_AddDocument_CheckSize_SizeChange() {
     //fill server by data
     server = GetTestServer();
 
-    fd = server.FindTopDocuments("1word2");
+    fd = server.FindTopDocuments("1word2"sv);
 
     ASSERT(fd.size() == 1);
     ASSERT_EQUAL_HINT(server.GetDocumentCount(), 6, "Documents count == 6");
@@ -113,6 +113,8 @@ void SearchServer_AddDocument_CheckSize_SizeChange() {
 void SearchServer_AddDocument_CheckSize_SizeEmpty() {
     SearchServer server = GetTestServer();
 
+    //2word2 - is stop word!
+    //fd is empty!
     const std::vector<Document>& fd = server.FindTopDocuments("2word2", DocumentStatus::BANNED);
 
     ASSERT(fd.empty());
@@ -127,16 +129,16 @@ void SearchServer_AddDocument_CheckId_IdFound() {
 }
 
 void SearchServer_AddDocument_CheckDocumentsCount_Equal() {
-    SearchServer server(""s);
+    SearchServer server;
 
-    std::vector<Document> fd = server.FindTopDocuments("1word2");
+    std::vector<Document> fd = server.FindTopDocuments("1word2"sv);
 
     ASSERT_EQUAL(fd.size(), 0);
 
-    server.AddDocument(0, "1word2", DocumentStatus::ACTUAL, { 1, 2, 3 });
-    server.AddDocument(1, "2word2", DocumentStatus::ACTUAL, { 1, 2, 3 });
+    server.AddDocument(0, "1word2"sv, DocumentStatus::ACTUAL, { 1, 2, 3 });
+    server.AddDocument(1, "2word2"sv, DocumentStatus::ACTUAL, { 1, 2, 3 });
 
-    fd = server.FindTopDocuments("1word2 2word2");
+    fd = server.FindTopDocuments("1word2 2word2"sv);
 
     ASSERT_EQUAL(fd.size(), 2);
 }
@@ -165,10 +167,10 @@ void TestMinusWords() {
 void TestMatchingDocuments() {
     SearchServer server = GetTestServer();
 
-    const auto& [w1, ds1] = server.MatchDocument("1word1 1word2 2word1 2word2", 0);
-    const auto& [w2, ds2] = server.MatchDocument("1word1 1word2 2word1 2word2", 1);
-    const auto& [w3, ds3] = server.MatchDocument("1word1 1word2 -2word1 2word2", 0);
-    const auto& [w4, ds4] = server.MatchDocument("-1word2 -2word1 2word2", 0);
+    const auto& [w1, ds1] = server.MatchDocument("1word1 1word2 2word1 2word2"s, 0);
+    const auto& [w2, ds2] = server.MatchDocument("1word1 1word2 2word1 2word2"s, 1);
+    const auto& [w3, ds3] = server.MatchDocument("1word1 1word2 -2word1 2word2"s, 0);
+    const auto& [w4, ds4] = server.MatchDocument("-1word2 -2word1 2word2"s, 0);
 
     ASSERT(w1[0] == "1word2"); ASSERT(ds1 == DocumentStatus::ACTUAL);
     ASSERT(w2[0] == "2word1"); ASSERT(ds2 == DocumentStatus::BANNED);
@@ -262,9 +264,14 @@ void TestIterators() {
 
 void TestGetWordFrequencies() {
     SearchServer server = GetTestServer();
+    /*
     const std::map<std::string, double>& result1 = server.GetWordFrequencies(1);
     const std::map<std::string, double>& result5 = server.GetWordFrequencies(5);
     const std::map<std::string, double>& result8 = server.GetWordFrequencies(8);
+    */
+    const std::map<std::string_view, double>& result1 = server.GetWordFrequencies(1);
+    const std::map<std::string_view, double>& result5 = server.GetWordFrequencies(5);
+    const std::map<std::string_view, double>& result8 = server.GetWordFrequencies(8);
 
     ASSERT_EQUAL(result1.size(), 3);
 
@@ -293,7 +300,7 @@ void TestRemoveDocuments() {
 void TestRemoveDuplicates() {
     SearchServer server = GetTestServerWithDuplicates();
     RemoveDuplicates(server);
-    const std::map<std::string, double> empty;
+    const std::map<std::string_view, double> empty;
 
     ASSERT(server.GetWordFrequencies(1) != empty);
     ASSERT(server.GetWordFrequencies(2) != empty);
@@ -302,6 +309,49 @@ void TestRemoveDuplicates() {
     ASSERT(server.GetWordFrequencies(5) == empty);
     ASSERT(server.GetWordFrequencies(6) != empty);
     ASSERT(server.GetWordFrequencies(7) == empty);
+
+}
+
+void TestMultiThread1() {
+    SearchServer search_server("and with"sv);
+
+    int id = 0;
+    for (
+        const std::string_view& text : {
+            "funny pet and nasty rat"sv,
+            "funny pet with curly hair"sv,
+            "funny pet and not very nasty rat"sv,
+            "pet with rat and rat and rat"sv,
+            "nasty rat with curly hair"sv,
+        }
+        ) {
+        search_server.AddDocument(++id, text, DocumentStatus::ACTUAL, { 1, 2 });
+    }
+
+    const std::string_view query = "curly and funny";
+
+    auto report = [&search_server, &query] {
+        std::cout << search_server.GetDocumentCount() << " documents total, "s
+            << search_server.FindTopDocuments(query).size() << " documents for query ["s << query << "]"s << std::endl;
+    };
+
+    report();
+    // однопоточная версия
+    search_server.RemoveDocument(5);
+    report();
+    // однопоточная версия
+    search_server.RemoveDocument(std::execution::seq, 1);
+    report();
+    // многопоточная версия
+    search_server.RemoveDocument(std::execution::par, 2);
+    report();
+
+    /*
+    5 documents total, 4 documents for query [curly and funny]
+    4 documents total, 3 documents for query [curly and funny]
+    3 documents total, 2 documents for query [curly and funny]
+    2 documents total, 1 documents for query [curly and funny]
+    */
 }
 
 // The TestSearchServer function is the entry point for running tests
@@ -330,4 +380,6 @@ void TestSearchServer() {
     RUN_TEST(TestGetWordFrequencies);
     RUN_TEST(TestRemoveDocuments);
     RUN_TEST(TestRemoveDuplicates);
+
+    RUN_TEST(TestMultiThread1);
 }

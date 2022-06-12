@@ -1,14 +1,13 @@
 #pragma once
-
-#include "search_server.h"
-#include "remove_duplicates.h"
-
 #include <iomanip>
+#include <random>
+
+#include "process_queries.h"
 
 template <typename Func>
 void RunTestImpl(Func, const std::string&);
 
-void AssertImpl(bool,const std::string&, const std::string&, const std::string&, const unsigned, const std::string&);
+void AssertImpl(bool, const std::string&, const std::string&, const std::string&, const unsigned, const std::string&);
 
 template <typename T, typename U>
 void AssertEqualImpl(const T&, const U&, const std::string&, const std::string&, const std::string&,
@@ -72,3 +71,5 @@ void TestRemoveDuplicates();
 
 // The TestSearchServer function is the entry point for running tests
 void TestSearchServer();
+
+void TestMultiThread1();

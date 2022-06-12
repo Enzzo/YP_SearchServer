@@ -18,7 +18,7 @@ class RequestQueue {
 
 public:
     explicit RequestQueue(const SearchServer& search_server) :search_server_(search_server) {}
-    
+
     template <typename DocumentPredicate>
     std::vector<Document> AddFindRequest(const std::string&, DocumentPredicate);
 

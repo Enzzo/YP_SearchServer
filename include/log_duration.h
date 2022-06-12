@@ -1,42 +1,37 @@
 #pragma once
 
 #include <chrono>
-#include <string>
 #include <iostream>
+#include <string_view>
 
-#define PROFILE_CONCAT_INTERNAL(X, Y) X ## Y
+#define PROFILE_CONCAT_INTERNAL(X, Y) X##Y
 #define PROFILE_CONCAT(X, Y) PROFILE_CONCAT_INTERNAL(X, Y)
 #define UNIQUE_VAR_NAME_PROFILE PROFILE_CONCAT(profileGuard, __LINE__)
 #define LOG_DURATION(x) LogDuration UNIQUE_VAR_NAME_PROFILE(x)
 #define LOG_DURATION_STREAM(x, y) LogDuration UNIQUE_VAR_NAME_PROFILE(x, y)
 
-using namespace std::literals;
-
 class LogDuration {
-	using Clock = std::chrono::steady_clock;
+public:
+    // заменим имя типа std::chrono::steady_clock
+    // с помощью using для удобства
+    using Clock = std::chrono::steady_clock;
 
-	Clock::time_point begin_time_ = Clock::now();
-	const std::string operation_;
-	std::ostream& out_;
+    LogDuration(std::string_view id, std::ostream& dst_stream = std::cerr)
+        : id_(id)
+        , dst_stream_(dst_stream) {
+    }
 
-public:	
+    ~LogDuration() {
+        using namespace std::chrono;
+        using namespace std::literals;
 
-	LogDuration() : LogDuration(""s){};
-	
-	LogDuration(const std::string& operation) : LogDuration(operation, std::cout) {};
+        const auto end_time = Clock::now();
+        const auto dur = end_time - start_time_;
+        dst_stream_ << id_ << ": "s << duration_cast<milliseconds>(dur).count() << " ms"s << std::endl;
+    }
 
-	LogDuration(const std::string& operation, std::ostream& out) : operation_(operation + ": "s), out_(out) {};
-	
-	~LogDuration() {
-		out_ << this->Duration() << std::endl;
-	}
-
-	inline const std::string Duration()const;
+private:
+    const std::string id_;
+    const Clock::time_point start_time_ = Clock::now();
+    std::ostream& dst_stream_;
 };
-
-inline const std::string LogDuration::Duration()const {
-	Clock::time_point end_time = Clock::now();
-	Clock::duration dur = end_time - begin_time_;
-
-	return operation_ + std::to_string(std::chrono::duration_cast<std::chrono::milliseconds>(dur).count()) + " ms"s;
-}
